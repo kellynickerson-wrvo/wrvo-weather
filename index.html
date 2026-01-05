@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+        #wrvo-alert-widget { font-family: 'Roboto', sans-serif; border: 1px solid #ddd; border-top: 4px solid #005596; border-radius: 4px; overflow: hidden; background: #fff; }
+        .wrvo-header { background: #f8f9fa; padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .wrvo-ticker-wrap { width: 100%; overflow: hidden; background: #fff; min-height: 50px; display: flex; align-items: center; }
+        .wrvo-marquee { display: flex; white-space: nowrap; animation: wrvo-scroll 40s linear infinite; padding-left: 100%; }
+        @keyframes wrvo-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        .wrvo-alert-item { display: inline-block; padding: 0 50px; font-size: 1.1em; color: #d32f2f; font-weight: 700; text-decoration: none; }
+        .wrvo-status { padding: 15px; font-size: 0.9em; color: #444; }
+    </style>
+</head>
+<body>
+    <div id="wrvo-alert-widget">
+        <div class="wrvo-header">
+            <span style="font-weight: 700; color: #333; font-size: 0.9em; text-transform: uppercase;">Regional Weather Alerts</span>
+            <span id="wrvo-dot" style="height: 8px; width: 8px; background-color: #bbb; border-radius: 50%;"></span>
+        </div>
+        <div id="wrvo-content" class="wrvo-ticker-wrap">
+            <div class="wrvo-status" id="wrvo-msg">Connecting to NWS...</div>
+        </div>
+        <div style="background: #f8f9fa; padding: 5px 15px; font-size: 0.65em; color: #aaa; border-top: 1px solid #eee; text-align: right;">
+            Updated: <span id="wrvo-ts">--:--</span>
+        </div>
+    </div>
+    <script>
+        (function() {
+            const counties = ["Onondaga", "Oswego", "Jefferson", "Lewis", "St. Lawrence", "Franklin", "Hamilton", "Oneida", "Herkimer", "Otsego", "Chenango", "Madison", "Cortland", "Cayuga", "Seneca", "Wayne", "Ontario", "Yates", "Schuyler", "Tompkins", "Tioga", "Broome"];
+            async function checkAlerts() {
+                const dot = document.getElementById('wrvo-dot');
+                const ts = document.getElementById('wrvo-ts');
+                const content = document.getElementById('wrvo-content');
+                try {
+                    const targetUrl = 'https://api.weather.gov/alerts/active?area=NY';
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&_t=${Date.now()}`;
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error();
+                    const wrapper = await response.json();
+                    const data = JSON.parse(wrapper.contents);
+                    const local = data.features.filter(a => {
+                        const desc = a.properties.areaDesc || "";
+                        return counties.some(c => desc.includes(c));
+                    });
+                    ts.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    if (local.length === 0) {
+                        dot.style.backgroundColor = "#2ecc71";
+                        content.innerHTML = '<div class="wrvo-status">✓ No active weather alerts for the WRVO region.</div>';
+                    } else {
+                        dot.style.backgroundColor = "#e74c3c";
+                        const alertHtml = local.map(a => `<a class="wrvo-alert-item" href="https://www.weather.gov" target="_blank">⚠️ ${a.properties.event.toUpperCase()}: ${a.properties.areaDesc}</a>`).join('');
+                        content.innerHTML = local.length === 1 ? `<div style="padding:15px;">${alertHtml}</div>` : `<div class="wrvo-marquee">${alertHtml}${alertHtml}</div>`;
+                    }
+                } catch (err) {
+                    dot.style.backgroundColor = "#bbb";
+                    content.innerHTML = '<div class="wrvo-status" style="color:#888;">NWS Data Unavailable.</div>';
+                }
+            }
+            checkAlerts();
+            setInterval(checkAlerts, 300000);
+        })();
+    </script>
+</body>
+</html>
