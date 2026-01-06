@@ -5,27 +5,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-        #wrvo-alert-widget { font-family: 'Roboto', sans-serif; border: none; border-top: 4px solid #005596; border-radius: 4px; background: transparent; height: 90px; }
+        #wrvo-alert-widget { font-family: 'Roboto', sans-serif; border: 1px solid #ddd; border-top: 4px solid #005596; border-radius: 4px; background: #fff; height: 105px; }
         .wrvo-header { background: #f8f9fa; padding: 8px 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .wrvo-ticker-wrap { width: 100%; overflow: hidden; background: #fff; height: 50px; display: flex; align-items: center; }
-        .wrvo-marquee { display: flex; white-space: nowrap; animation: wrvo-scroll 40s linear infinite; }
-        @keyframes wrvo-scroll { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .wrvo-alert-item { display: inline-block; padding: 0 40px; font-size: 1.05em; color: #d32f2f; font-weight: 700; text-decoration: none; }
-        .wrvo-status { padding: 12px; font-size: 0.9em; color: #555; width: 100%; text-align: left; }
+        .wrvo-ticker-wrap { width: 100%; overflow: hidden; background: #fff; height: 55px; display: flex; align-items: center; position: relative; }
+        
+        /* THE SLOW TICKER */
+        .wrvo-marquee { 
+            display: flex; 
+            white-space: nowrap; 
+            animation: wrvo-scroll 100s linear infinite; /* Slowed down to 100s */
+            padding-left: 100%;
+        }
+        
+        /* Pause on hover so people can actually read! */
+        .wrvo-ticker-wrap:hover .wrvo-marquee { animation-play-state: paused; cursor: pointer; }
+
+        @keyframes wrvo-scroll { 
+            0% { transform: translateX(0); } 
+            100% { transform: translateX(-100%); } 
+        }
+
+        .wrvo-alert-item { display: inline-block; padding: 0 60px; font-size: 1.15em; color: #d32f2f; font-weight: 400; text-decoration: none; }
+        .wrvo-alert-item strong { font-weight: 700; text-transform: uppercase; }
+        .wrvo-status { padding: 12px; font-size: 0.95em; color: #555; width: 100%; }
         .wrvo-footer { background: #f8f9fa; padding: 4px 12px; font-size: 0.65em; color: #999; border-top: 1px solid #eee; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
     <div id="wrvo-alert-widget">
         <div class="wrvo-header">
-            <span style="font-weight: 700; color: #005596; font-size: 0.8em; text-transform: uppercase;">Regional Weather Alerts</span>
+            <span style="font-weight: 700; color: #333; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px;">Regional Weather Alerts</span>
             <span id="wrvo-dot" style="height: 8px; width: 8px; background-color: #bbb; border-radius: 50%;"></span>
         </div>
         <div id="wrvo-content" class="wrvo-ticker-wrap">
             <div class="wrvo-status">Updating...</div>
         </div>
         <div class="wrvo-footer">
-            <span>NWS Live Feed</span>
+            <span>National Weather Service Live Feed</span>
             <span>Updated: <span id="wrvo-ts">--:--</span></span>
         </div>
     </div>
@@ -40,7 +56,6 @@
             const target = 'https://api.weather.gov/alerts/active?area=NY';
 
             try {
-                // Use a faster proxy service
                 const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(target)}`);
                 if (!response.ok) throw new Error();
                 
@@ -57,7 +72,14 @@
                     content.innerHTML = '<div class="wrvo-status">✓ No active weather alerts for the WRVO region.</div>';
                 } else {
                     dot.style.backgroundColor = "#e74c3c";
-                    const alertHtml = local.map(a => `<a class="wrvo-alert-item" href="https://www.weather.gov" target="_blank">⚠️ ${a.properties.event.toUpperCase()}: ${a.properties.areaDesc}</a>`).join('');
+                    // Map alerts and duplicate them for a seamless loop
+                    const alertHtml = local.map(a => `
+                        <a class="wrvo-alert-item" href="https://www.weather.gov" target="_blank">
+                            ⚠️ <strong>${a.properties.event}</strong>: ${a.properties.areaDesc}
+                        </a>
+                    `).join('');
+                    
+                    // If multiple alerts, we use the marquee with a double-join for looping
                     content.innerHTML = `<div class="wrvo-marquee">${alertHtml}${alertHtml}</div>`;
                 }
             } catch (err) {
@@ -71,4 +93,3 @@
     </script>
 </body>
 </html>
-
